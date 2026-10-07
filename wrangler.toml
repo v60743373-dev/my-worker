@@ -1,3 +1,11 @@
 name = "my-worker"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "KEYS"
+id = "YAHAN_KEYS_KA_ASLI_ID"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "YAHAN_SESSIONS_KA_ASLI_ID"
