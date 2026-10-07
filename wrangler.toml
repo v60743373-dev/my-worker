@@ -4,8 +4,8 @@ compatibility_date = "2024-01-01"
 
 [[kv_namespaces]]
 binding = "KEYS"
-id = "YAHAN_KEYS_KA_ASLI_ID"
+id = "0a0ab17dfe7e49c0bae7cc12ec756f02"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "YAHAN_SESSIONS_KA_ASLI_ID"
+id = "cc34c38d7f04415db9f4fd678df4dbec"
