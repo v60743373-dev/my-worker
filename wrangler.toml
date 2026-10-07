@@ -1,3 +1,11 @@
 name = "my-worker"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "KEYS"
+id = "0a0ab17dfe7e49c0bae7cc..."
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "cc34c38d7f04415db9f4fd..."
