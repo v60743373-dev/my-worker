@@ -1,4 +1,4 @@
-const GITHUB_TOKEN = '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';
+const GITHUB_TOKEN = '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';
 const GITHUB_REPO = 'v60743373-dev/my-config1';
 const GITHUB_BRANCH = 'main';
 const GITHUB_FILE = 'config.json';
