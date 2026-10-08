@@ -1,9 +1,4 @@
-// ═══════════════════════════════════════════════════════════
-//  WORKER CODE — Token hardcoded (Cloudflare variable ki zaroorat nahi)
-//  ⚠️ YAHAN APNA TOKEN PASTE KARO
-// ═══════════════════════════════════════════════════════════
-
-const GITHUB_TOKEN = 'github_pat_YAHAN_APNA_TOKEN_PASTE_KARO';
+const GITHUB_TOKEN = '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';
 const GITHUB_REPO = 'v60743373-dev/my-config1';
 const GITHUB_BRANCH = 'main';
 const GITHUB_FILE = 'config.json';
@@ -24,16 +19,14 @@ export default {
     const path = url.pathname;
 
     try {
-      // HEALTH CHECK
       if (path === '/health') {
         return json({ ok: true, time: Date.now() }, 200, cors);
       }
 
-      // DEBUG
       if (path === '/debug') {
         const token = GITHUB_TOKEN || '';
         return json({
-          token_exists: token.length > 0,
+          token_exists: token.length > 0 && !token.includes('YAHAN'),
           token_length: token.length,
           token_prefix: token.substring(0, 20),
           token_type: token.startsWith('github_pat_') ? 'fine-grained' :
@@ -41,16 +34,11 @@ export default {
         }, 200, cors);
       }
 
-      // CONFIG ENDPOINT
       if (path === '/config') {
-        if (!GITHUB_TOKEN || GITHUB_TOKEN === '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') {
-          return json({
-            error: 'token_not_set',
-            message: 'Token code mein set nahi kiya'
-          }, 500, cors);
+        if (!GITHUB_TOKEN || GITHUB_TOKEN.includes('YAHAN')) {
+          return json({ error: 'token_not_set' }, 500, cors);
         }
 
-        // Method 1: Raw URL try karo (agar public repo hai)
         let ghRes = await fetch(
           `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${GITHUB_FILE}`,
           {
@@ -72,7 +60,6 @@ export default {
           });
         }
 
-        // Method 2: GitHub API try karo (private repo ke liye)
         ghRes = await fetch(
           `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}?ref=${GITHUB_BRANCH}`,
           {
@@ -89,10 +76,7 @@ export default {
           return json({
             error: 'github_failed',
             status: ghRes.status,
-            detail: errText.substring(0, 500),
-            repo: GITHUB_REPO,
-            branch: GITHUB_BRANCH,
-            file: GITHUB_FILE
+            detail: errText.substring(0, 500)
           }, 500, cors);
         }
 
