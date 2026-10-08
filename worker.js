@@ -22,56 +22,161 @@ export default {
       }
 
       // ═══════════════════════════════════════════════
-      // CONFIG ENDPOINT — GITHUB API (Sahi tarika)
+      // DEBUG — TOKEN CHECK (Temporary)
+      // ═══════════════════════════════════════════════
+      if (path === '/debug') {
+        const token = env.GITHUB_TOKEN || '';
+        return json({
+          token_exists: !!token,
+          token_length: token.length,
+          token_prefix: token.substring(0, 20),
+          token_type: token.startsWith('github_pat_') ? 'fine-grained' : 
+                      token.startsWith('ghp_') ? 'classic' : 'unknown'
+        }, 200, cors);
+      }
+
+      // ═══════════════════════════════════════════════
+      // CONFIG ENDPOINT
       // ═══════════════════════════════════════════════
       if (path === '/config') {
-        // Step 1: GitHub API se file info lo
-        const apiRes = await fetch(
-          'https://api.github.com/repos/v60743373-dev/my-config1/contents/config.json?ref=main',
-          {
-            headers: {
-              'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
-              'User-Agent': 'Config-Proxy',
-              'Accept': 'application/vnd.github.v3+json'
-            }
-          }
-        );
-
-        if (!apiRes.ok) {
-          const errText = await apiRes.text();
+        const token = env.GITHUB_TOKEN;
+        
+        if (!token) {
           return json(
+            { error: 'no_token', message: 'GITHUB_TOKEN not set in Cloudflare' },
+            500,
+            cors
+          );
+        }
+
+        // ═══ Method 1: Classic Token (ghp_) ═══
+        if (token.startsWith('ghp_')) {
+          const ghRes = await fetch(
+            'https://api.github.com/repos/v60743373-dev/my-config1/contents/config.json?ref=main',
             {
-              error: 'github_api_failed',
-              status: apiRes.status,
-              detail: errText.substring(0, 500)
-            },
-            500,
-            cors
+              headers: {
+                'Authorization': `token ${token}`,
+                'User-Agent': 'Config-Proxy',
+                'Accept': 'application/vnd.github.v3+json'
+              }
+            }
           );
-        }
 
-        // Step 2: Response JSON hai
-        const fileData = await apiRes.json();
-
-        // Step 3: Content base64 mein hai — decode karo
-        if (!fileData.content) {
-          return json(
-            { error: 'no_content', detail: 'File content missing' },
-            500,
-            cors
-          );
-        }
-
-        // Base64 decode
-        const decoded = atob(fileData.content.replace(/\n/g, ''));
-
-        return new Response(decoded, {
-          headers: {
-            ...cors,
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache'
+          if (!ghRes.ok) {
+            const errText = await ghRes.text();
+            return json(
+              {
+                error: 'github_api_failed',
+                status: ghRes.status,
+                detail: errText.substring(0, 500)
+              },
+              500,
+              cors
+            );
           }
-        });
+
+          const fileData = await ghRes.json();
+          
+          if (!fileData.content) {
+            return json(
+              { error: 'no_content', detail: 'File content missing' },
+              500,
+              cors
+            );
+          }
+
+          const decoded = atob(fileData.content.replace(/\n/g, ''));
+          
+          return new Response(decoded, {
+            headers: {
+              ...cors,
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache'
+            }
+          });
+        }
+
+        // ═══ Method 2: Fine-grained Token (github_pat_) ═══
+        if (token.startsWith('github_pat_')) {
+          // Pehle try raw URL
+          const rawRes = await fetch(
+            'https://raw.githubusercontent.com/v60743373-dev/my-config1/main/config.json',
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'User-Agent': 'Config-Proxy'
+              }
+            }
+          );
+
+          if (rawRes.ok) {
+            const txt = await rawRes.text();
+            return new Response(txt, {
+              headers: {
+                ...cors,
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache'
+              }
+            });
+          }
+
+          // Raw fail — API try karo
+          const apiRes = await fetch(
+            'https://api.github.com/repos/v60743373-dev/my-config1/contents/config.json?ref=main',
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'User-Agent': 'Config-Proxy',
+                'Accept': 'application/vnd.github.v3+json'
+              }
+            }
+          );
+
+          if (!apiRes.ok) {
+            const errText = await apiRes.text();
+            return json(
+              {
+                error: 'github_api_failed',
+                status: apiRes.status,
+                detail: errText.substring(0, 500),
+                token_type: 'fine-grained'
+              },
+              500,
+              cors
+            );
+          }
+
+          const fileData = await apiRes.json();
+          
+          if (!fileData.content) {
+            return json(
+              { error: 'no_content', detail: 'File content missing' },
+              500,
+              cors
+            );
+          }
+
+          const decoded = atob(fileData.content.replace(/\n/g, ''));
+          
+          return new Response(decoded, {
+            headers: {
+              ...cors,
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache'
+            }
+          });
+        }
+
+        // Unknown token type
+        return json(
+          { 
+            error: 'invalid_token_type',
+            message: 'Token must start with ghp_ or github_pat_',
+            prefix: token.substring(0, 10)
+          },
+          500,
+          cors
+        );
       }
 
       // ═══════════════════════════════════════════════
