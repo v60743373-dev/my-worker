@@ -14,20 +14,14 @@ export default {
     const path = url.pathname;
 
     try {
-      // ═══════════════════════════════════════════════
-      // HEALTH CHECK
-      // ═══════════════════════════════════════════════
       if (path === '/health') {
         return json({ ok: true, time: Date.now() }, 200, cors);
       }
 
-      // ═══════════════════════════════════════════════
-      // CONFIG ENDPOINT
-      // ═══════════════════════════════════════════════
       if (path === '/config') {
-        // GitHub se config fetch karo
+        // GitHub API use karo (raw URL ki jagah)
         const ghRes = await fetch(
-          'https://raw.githubusercontent.com/v60743373-dev/my-config1/main/config.json',
+          'https://api.github.com/repos/v60743373-dev/my-config1/contents/config.json?ref=main',
           {
             headers: {
               'Authorization': `token ${env.GITHUB_TOKEN}`,
@@ -60,63 +54,6 @@ export default {
         });
       }
 
-      // ═══════════════════════════════════════════════
-      // VERIFY ENDPOINT (Optional — agar KV bind kiye ho)
-      // ═══════════════════════════════════════════════
-      if (path === '/verify') {
-        const key = url.searchParams.get('key');
-        const did = url.searchParams.get('did');
-
-        if (!key || !did) {
-          return json({ valid: false, reason: 'missing' }, 400, cors);
-        }
-
-        // Agar KV bind nahi hai, toh simple pass karo
-        if (!env.KEYS) {
-          return json(
-            { valid: true, session: 'no-kv-mode', expiry: null },
-            200,
-            cors
-          );
-        }
-
-        const kd = await env.KEYS.get(`key:${key}`);
-        if (!kd) {
-          return json({ valid: false, reason: 'invalid_key' }, 200, cors);
-        }
-
-        const d = JSON.parse(kd);
-        if (d.expiry && Date.now() > d.expiry) {
-          return json({ valid: false, reason: 'expired' }, 200, cors);
-        }
-        if (d.deviceId && d.deviceId !== did) {
-          return json({ valid: false, reason: 'device_mismatch' }, 200, cors);
-        }
-
-        if (!d.deviceId) d.deviceId = did;
-        d.uses = (d.uses || 0) + 1;
-        await env.KEYS.put(`key:${key}`, JSON.stringify(d));
-
-        const session = crypto.randomUUID();
-
-        if (env.SESSIONS) {
-          await env.SESSIONS.put(
-            `session:${session}`,
-            JSON.stringify({ key, did }),
-            { expirationTtl: 86400 }
-          );
-        }
-
-        return json(
-          { valid: true, session, expiry: d.expiry },
-          200,
-          cors
-        );
-      }
-
-      // ═══════════════════════════════════════════════
-      // DEFAULT — 404
-      // ═══════════════════════════════════════════════
       return json({ error: 'not_found', path }, 404, cors);
     } catch (e) {
       return json(
