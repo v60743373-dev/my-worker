@@ -26,10 +26,6 @@ export default {
         return json({ valid: true, session, expiry: d.expiry }, 200, cors);
       }
       if (path === '/config') {
-        const session = request.headers.get('X-Session');
-        if (!session) return json({ error: 'no_session' }, 401, cors);
-        const sd = await env.SESSIONS.get(`session:${session}`);
-        if (!sd) return json({ error: 'invalid_session' }, 401, cors);
         const ghRes = await fetch(env.GITHUB_URL, {
           headers: { 'Authorization': `Bearer ${env.GITHUB_TOKEN}`, 'User-Agent': 'Config-Proxy', 'Accept': 'application/vnd.github.raw' }
         });
