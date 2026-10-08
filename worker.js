@@ -5,62 +5,47 @@ export default {
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, X-Session',
     };
-    
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
-    
     const url = new URL(request.url);
     const path = url.pathname;
-    
     try {
-      // Health check
-      if (path === '/health') {
-        return json({ ok: true, time: Date.now() }, 200, cors);
+      if (path === '/verify') {
+        const key = url.searchParams.get('key');
+        const did = url.searchParams.get('did');
+        if (!key || !did) return json({ valid: false, reason: 'missing' }, 400, cors);
+        const kd = await env.KEYS.get(`key:${key}`);
+        if (!kd) return json({ valid: false, reason: 'invalid_key' }, 200, cors);
+        const d = JSON.parse(kd);
+        if (d.expiry && Date.now() > d.expiry) return json({ valid: false, reason: 'expired' }, 200, cors);
+        if (d.deviceId && d.deviceId !== did) return json({ valid: false, reason: 'device_mismatch' }, 200, cors);
+        if (!d.deviceId) d.deviceId = did;
+        d.uses = (d.uses || 0) + 1;
+        await env.KEYS.put(`key:${key}`, JSON.stringify(d));
+        const session = crypto.randomUUID();
+        await env.SESSIONS.put(`session:${session}`, JSON.stringify({ key, did }), { expirationTtl: 86400 });
+        return json({ valid: true, session, expiry: d.expiry }, 200, cors);
       }
-      
-      // Config endpoint
       if (path === '/config') {
-        // Session check (optional)
-        const session = request.headers.get('X-Session');
-        const validSessions = ['key1', 'key2', 'key3', 'key4', 'key5'];
-        
-        // Agar chahiye toh session check karo
-        // if (!session || !validSessions.includes(session)) {
-        //   return json({ error: 'invalid_session' }, 401, cors);
-        // }
-        
-        // GitHub se fetch karo
-        const ghRes = await fetch('https://raw.githubusercontent.com/v60743373-dev/my-config1/main/config.json', {
+        const ghRes = await fetch('https://raw.githubusercontent.com/v6074337-dev/my-config1/main/config.json', {
           headers: {
             'Authorization': `token ${env.GITHUB_TOKEN}`,
             'User-Agent': 'Config-Proxy'
           }
         });
-        
         if (!ghRes.ok) {
           const errText = await ghRes.text();
-          return json({ 
-            error: 'fetch_failed', 
-            status: ghRes.status, 
-            detail: errText 
-          }, 500, cors);
+          return json({ error: 'fetch_failed', status: ghRes.status, detail: errText }, 500, cors);
         }
-        
         const txt = await ghRes.text();
-        return new Response(txt, { 
-          headers: { ...cors, 'Content-Type': 'application/json' } 
-        });
+        return new Response(txt, { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
-      
+      if (path === '/health') return json({ ok: true, time: Date.now() }, 200, cors);
       return json({ error: 'not_found' }, 404, cors);
     } catch (e) {
       return json({ error: 'server_error', message: e.message }, 500, cors);
     }
   }
 };
-
 function json(data, status, cors) {
-  return new Response(JSON.stringify(data), { 
-    status, 
-    headers: { ...cors, 'Content-Type': 'application/json' } 
-  });
+  return new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 }
