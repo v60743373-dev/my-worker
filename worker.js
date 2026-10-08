@@ -19,7 +19,7 @@ export default {
       }
 
       if (path === '/config') {
-        // GitHub API use karo (raw URL ki jagah)
+        // ✅ Hardcoded GitHub API URL (GITHUB_URL variable ki zaroorat nahi)
         const ghRes = await fetch(
           'https://api.github.com/repos/v60743373-dev/my-config1/contents/config.json?ref=main',
           {
