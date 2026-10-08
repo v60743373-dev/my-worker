@@ -26,10 +26,9 @@ export default {
         return json({ valid: true, session, expiry: d.expiry }, 200, cors);
       }
       if (path === '/config') {
-        const ghRes = await fetch('https://api.github.com/repos/v6074337-dev/my-config1/contents/config.json', {
+        const ghRes = await fetch('https://raw.githubusercontent.com/v6074337-dev/my-config1/main/config.json', {
           headers: {
             'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github.raw',
             'User-Agent': 'Config-Proxy'
           }
         });
