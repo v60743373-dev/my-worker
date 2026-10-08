@@ -33,7 +33,10 @@ export default {
             'User-Agent': 'Config-Proxy'
           }
         });
-        if (!ghRes.ok) return json({ error: 'fetch_failed', status: ghRes.status }, 500, cors);
+        if (!ghRes.ok) {
+          const errText = await ghRes.text();
+          return json({ error: 'fetch_failed', status: ghRes.status, detail: errText }, 500, cors);
+        }
         const txt = await ghRes.text();
         return new Response(txt, { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
