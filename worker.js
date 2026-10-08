@@ -22,27 +22,27 @@ export default {
       }
 
       // ═══════════════════════════════════════════════
-      // CONFIG ENDPOINT
+      // CONFIG ENDPOINT — GITHUB API (Sahi tarika)
       // ═══════════════════════════════════════════════
       if (path === '/config') {
-        // GitHub API se config fetch karo
-        const ghRes = await fetch(
+        // Step 1: GitHub API se file info lo
+        const apiRes = await fetch(
           'https://api.github.com/repos/v60743373-dev/my-config1/contents/config.json?ref=main',
           {
             headers: {
-              'Authorization': `token ${env.GITHUB_TOKEN}`,
+              'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
               'User-Agent': 'Config-Proxy',
-              'Accept': 'application/vnd.github.raw'
+              'Accept': 'application/vnd.github.v3+json'
             }
           }
         );
 
-        if (!ghRes.ok) {
-          const errText = await ghRes.text();
+        if (!apiRes.ok) {
+          const errText = await apiRes.text();
           return json(
             {
-              error: 'fetch_failed',
-              status: ghRes.status,
+              error: 'github_api_failed',
+              status: apiRes.status,
               detail: errText.substring(0, 500)
             },
             500,
@@ -50,8 +50,22 @@ export default {
           );
         }
 
-        const txt = await ghRes.text();
-        return new Response(txt, {
+        // Step 2: Response JSON hai
+        const fileData = await apiRes.json();
+
+        // Step 3: Content base64 mein hai — decode karo
+        if (!fileData.content) {
+          return json(
+            { error: 'no_content', detail: 'File content missing' },
+            500,
+            cors
+          );
+        }
+
+        // Base64 decode
+        const decoded = atob(fileData.content.replace(/\n/g, ''));
+
+        return new Response(decoded, {
           headers: {
             ...cors,
             'Content-Type': 'application/json',
